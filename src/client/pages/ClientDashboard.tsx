@@ -1,33 +1,18 @@
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Home, Plus, Folder } from 'lucide-react'
+import { Home, MessageSquarePlus, FileText } from 'lucide-react'
 import { QuickActionCard } from '@/components/common/QuickActionCard'
 import { TaskCard } from '@/components/common/TaskCard'
-import { RequestCard } from '@/components/common/RequestCard'
 import { mockUser, mockTasks } from '@/data/mockData'
-import { storageUtils } from '@/utils/storage'
-import type { Request } from '@/types'
 
 export function ClientDashboard() {
   const navigate = useNavigate()
-  const [recentRequests, setRecentRequests] = useState<Request[]>([])
-
-  useEffect(() => {
-    // Load recent requests (last 5)
-    const allRequests = storageUtils.getRequests()
-    const sorted = allRequests
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5)
-    setRecentRequests(sorted)
-  }, [])
 
   const handleNewRequest = () => {
     navigate('/client/new-request')
   }
 
   const handleMyDocuments = () => {
-    // TODO: Navigate to documents page
-    console.log('View documents')
+    navigate('/client/documents')
   }
 
   const handleTaskClick = (taskId: string) => {
@@ -35,78 +20,59 @@ export function ClientDashboard() {
     console.log('View task:', taskId)
   }
 
-  const handleRequestClick = (requestId: string) => {
-    navigate(`/client/request/${requestId}`)
-  }
-
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb and Header */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Home className="w-4 h-4" />
-          <span>Home</span>
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold">Welcome, {mockUser.companyName}</h1>
-          <p className="text-muted-foreground mt-1">GSTIN: {mockUser.gstin}</p>
+    <div className="flex flex-col items-center gap-14 py-8 px-12 w-full max-w-5xl mx-auto">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 w-full">
+        <Home className="w-4 h-4 text-[rgba(0,0,0,0.45)]" />
+        <div className="flex items-center justify-center gap-2.5">
+          <span className="text-sm font-medium text-[#0A0A0A]">Home</span>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <QuickActionCard
-            title="New Request"
-            description="Ask a question or start a filing"
-            icon={Plus}
-            onClick={handleNewRequest}
-          />
-          <QuickActionCard
-            title="My Documents"
-            description="View uploaded files"
-            icon={Folder}
-            onClick={handleMyDocuments}
-          />
+      {/* Main Content Container */}
+      <div className="flex flex-col items-center gap-12 w-full">
+        {/* Welcome Section */}
+        <div className="flex flex-col gap-1.5 w-full">
+          <h1 className="text-lg font-bold text-[#0F172A] leading-[1.56em]">
+            Welcome, {mockUser.companyName}
+          </h1>
+          <p className="text-sm font-normal text-[#64748B]">GSTIN: {mockUser.gstin}</p>
         </div>
-      </div>
 
-      {/* My Requests */}
-      {recentRequests.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">My Requests</h2>
-            <button
-              onClick={() => navigate('/client/new-request')}
-              className="text-sm text-primary hover:underline"
-            >
-              View all
-            </button>
+        {/* Quick Actions */}
+        <div className="flex flex-col gap-4 w-full">
+          <h2 className="text-base font-semibold text-[rgba(0,0,0,0.65)]">Quick Actions</h2>
+          <div className="flex items-stretch gap-3 w-full">
+            <QuickActionCard
+              title="New Request"
+              description="Ask a question or start a filing"
+              icon={MessageSquarePlus}
+              onClick={handleNewRequest}
+              className="flex-1"
+            />
+            <QuickActionCard
+              title="My Documents"
+              description="View uploaded files"
+              icon={FileText}
+              onClick={handleMyDocuments}
+              className="flex-1"
+            />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {recentRequests.map((request) => (
-              <RequestCard
-                key={request.id}
-                request={request}
-                onClick={() => handleRequestClick(request.id)}
+        </div>
+
+        {/* Your Tasks */}
+        <div className="flex flex-col gap-4 w-full">
+          <h2 className="text-base font-semibold text-[rgba(0,0,0,0.65)]">Your Tasks</h2>
+          <div className="flex flex-col gap-6 w-full">
+            {mockTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onClick={() => handleTaskClick(task.id)}
               />
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Your Tasks */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Your Tasks</h2>
-        <div className="grid grid-cols-1 gap-4">
-          {mockTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onClick={() => handleTaskClick(task.id)}
-            />
-          ))}
         </div>
       </div>
     </div>

@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Home } from 'lucide-react'
+import { Home, ChevronRight } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
 import { FrequentlyUsedRequest } from '@/components/common/FrequentlyUsedRequest'
 import { storageUtils } from '@/utils/storage'
 import type { Request } from '@/types'
@@ -56,56 +55,64 @@ export function CreateNewRequest() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col items-center gap-14 py-8 px-12 w-full max-w-5xl mx-auto">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link to="/client/dashboard" className="flex items-center gap-2 hover:text-foreground transition-colors">
-          <Home className="w-4 h-4" />
-          <span>Home</span>
+      <div className="flex items-center gap-1.5 w-full">
+        <Link
+          to="/client/dashboard"
+          className="flex items-center justify-center gap-1 hover:text-title transition-colors flex-shrink-0"
+        >
+          <Home className="w-4 h-4 text-title" />
+          <span className="text-sm font-medium text-title">Home</span>
         </Link>
-        <span>/</span>
-        <span className="text-foreground">New Request</span>
-      </div>
-
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">What do you need help with?</h1>
-      </div>
-
-      {/* Request Input */}
-      <div className="space-y-2">
-        <Textarea
-          placeholder="Describe your request..."
-          value={requestDescription}
-          onChange={(e) => setRequestDescription(e.target.value)}
-          className="min-h-[200px] text-base"
-        />
-      </div>
-
-      {/* Frequently Used Requests */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Frequently Used Requests</h2>
-        <div className="space-y-2 max-w-2xl">
-          {frequentlyUsedRequests.map((request, index) => (
-            <FrequentlyUsedRequest
-              key={index}
-              label={request}
-              onRemove={() => handleRemoveRequest(index)}
-              onClick={() => handleSelectRequest(request)}
-            />
-          ))}
+        <ChevronRight className="w-3.5 h-3.5 text-title flex-shrink-0" />
+        <div className="flex items-center justify-left gap-2.5 flex-1 min-w-0">
+          <span className="text-sm font-medium text-title">New Request</span>
         </div>
       </div>
 
-      {/* Submit Button */}
-      <div className="flex justify-end">
-        <Button
+      {/* Main Content Container */}
+      <div className="flex flex-col items-center gap-8 w-full">
+        {/* Input Section */}
+        <div className="flex flex-col gap-5 w-full">
+          <h1 className="text-2xl font-medium text-[#0A0A0A] leading-[1.33em]">
+            What do you need help with?
+          </h1>
+          <div className="flex flex-col gap-2 w-full">
+            <Textarea
+              placeholder="Describe your request..."
+              value={requestDescription}
+              onChange={(e) => setRequestDescription(e.target.value)}
+              className="h-[120px] text-base font-normal text-[#71717A] placeholder:text-[#71717A] border border-[#E4E4E7] rounded-md bg-[#FAFAFA] px-3 py-3 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.1)] focus:outline-none focus:ring focus:ring-blue-100 focus:border-blue-300 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Frequently Used Requests */}
+        <div className="flex flex-col gap-2 w-full">
+          <div className="flex gap-2.5 w-full">
+            <h2 className="text-base font-normal text-[#404040]">Frequently Used Requests</h2>
+          </div>
+          <div className="flex flex-col w-full">
+            {frequentlyUsedRequests.map((request, index) => (
+              <FrequentlyUsedRequest
+                key={index}
+                label={request}
+                onRemove={() => handleRemoveRequest(index)}
+                onClick={() => handleSelectRequest(request)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Submit Button */}
+        <button
           onClick={handleSubmit}
           disabled={!requestDescription.trim()}
-          size="lg"
+          className="flex items-center justify-center gap-2 h-8 px-[15px] w-[150px] rounded-md bg-[#1677FF] text-white text-sm font-normal shadow-[0px_2px_0px_0px_rgba(5,145,255,0.1)] hover:bg-[#1677FF]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
         >
-          Submit Request
-        </Button>
+          Submit
+        </button>
       </div>
     </div>
   )

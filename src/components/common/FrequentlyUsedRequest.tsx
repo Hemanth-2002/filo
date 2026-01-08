@@ -15,24 +15,26 @@ export function FrequentlyUsedRequest({
   return (
     <div
       className={cn(
-        'flex items-center justify-between px-4 py-3 rounded-lg border border-border bg-background hover:bg-accent transition-colors w-full',
+        'flex flex-col justify-center gap-2.5 px-2 py-3 bg-white w-full',
         onClick && 'cursor-pointer'
       )}
       onClick={onClick}
     >
-      <span className="text-sm font-medium text-foreground">{label}</span>
-      {onRemove && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove()
-          }}
-          className="ml-2 p-1 rounded-full hover:bg-muted transition-colors flex-shrink-0"
-          aria-label={`Remove ${label}`}
-        >
-          <X className="w-4 h-4 text-muted-foreground" />
-        </button>
-      )}
+      <div className="flex items-center gap-2.5 w-full">
+        <span className="text-sm font-light text-[#71717A] flex-1">{label}</span>
+        {onRemove && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove()
+            }}
+            className="flex-shrink-0 p-0 hover:opacity-70 transition-opacity"
+            aria-label={`Remove ${label}`}
+          >
+            <X className="w-4 h-4 text-[#71717A]" />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

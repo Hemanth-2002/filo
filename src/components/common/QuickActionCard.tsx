@@ -1,4 +1,4 @@
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { LucideIcon } from 'lucide-react'
 
@@ -20,22 +20,16 @@ export function QuickActionCard({
   return (
     <Card
       className={cn(
-        'cursor-pointer hover:shadow-md transition-shadow',
+        'cursor-pointer hover:shadow-md transition-shadow border border-[#E2E8F0] rounded-xl',
         className
       )}
       onClick={onClick}
     >
-      <CardContent className="p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center flex-shrink-0 bg-muted/20">
-            <Icon className="w-7 h-7 text-muted-foreground" />
-          </div>
-          <div className="flex-1 pt-1">
-            <h3 className="text-lg font-semibold mb-1">{title}</h3>
-            <p className="text-sm text-muted-foreground">{description}</p>
-          </div>
-        </div>
-      </CardContent>
+      <div className="flex flex-col gap-1 py-[18px] px-[17px]">
+        <Icon className="w-6 h-6 text-[rgba(0,0,0,0.88)]" />
+        <h3 className="text-base font-medium text-[rgba(0,0,0,0.88)]">{title}</h3>
+        <p className="text-sm text-[rgba(0,0,0,0.65)]">{description}</p>
+      </div>
     </Card>
   )
 }

@@ -8,6 +8,7 @@ import type { Request } from '@/types'
 export function ClientLayout() {
   const location = useLocation()
   const [requests, setRequests] = useState<Request[]>([])
+  const [isNavCollapsed, setIsNavCollapsed] = useState(false)
 
   const loadRequests = () => {
     // Load requests from localStorage
@@ -30,9 +31,14 @@ export function ClientLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar user={mockUser} requests={requests} />
+      <Sidebar
+        user={mockUser}
+        requests={requests}
+        collapsed={isNavCollapsed}
+        onToggleCollapse={() => setIsNavCollapsed(!isNavCollapsed)}
+      />
       <div className="flex-1 overflow-y-auto bg-background">
-        <div className="container mx-auto px-8 py-8 max-w-6xl">
+        <div className="flex justify-center w-full">
           <Outlet />
         </div>
       </div>

@@ -1,27 +1,88 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { ChevronRight, ChevronDown, FileText, FileStack, User } from 'lucide-react'
+import { ChevronRight, ChevronDown, FileText, FileStack, User, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import type { User as UserType, Request } from '@/types'
 
 interface SidebarProps {
   user: UserType
   requests: Request[]
+  collapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
-export function Sidebar({ user, requests }: SidebarProps) {
+export function Sidebar({ user, requests, collapsed = false, onToggleCollapse }: SidebarProps) {
   const location = useLocation()
   const [isRequestsOpen, setIsRequestsOpen] = useState(true)
 
-  return (
-    <div className="w-64 h-screen bg-white border-r border-border flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-white text-sm font-bold">✓</span>
+  if (collapsed) {
+    return (
+      <div className="w-[52px] h-screen bg-[#FAFAFA] border-r border-[rgba(0,0,0,0.1)] flex flex-col">
+        {/* Logo */}
+        <div className="h-[64px] border-b border-[rgba(0,0,0,0.1)] flex items-center justify-center flex-shrink-0">
+          <img src="/filo_logo.svg" alt="Filo" className="w-8 h-8" />
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-2 space-y-2 overflow-y-auto flex flex-col items-center">
+          <Link
+            to="/client/new-request"
+            className={cn(
+              'w-10 h-10 rounded-lg flex items-center justify-center transition-colors',
+              location.pathname === '/client/new-request'
+                ? 'bg-[#EFF6FF] text-[#2563EB]'
+                : 'text-[#71717A] hover:bg-[#F3F3F5]'
+            )}
+            title="Create New Request"
+          >
+            <FileText className="w-5 h-5" />
+          </Link>
+
+          <button
+            onClick={() => setIsRequestsOpen(!isRequestsOpen)}
+            className={cn(
+              'w-10 h-10 rounded-lg flex items-center justify-center transition-colors',
+              'text-[#71717A] hover:bg-[#F3F3F5]'
+            )}
+            title="My Requests"
+          >
+            <FileStack className="w-5 h-5" />
+          </button>
+        </nav>
+
+        {/* Toggle Button */}
+        {onToggleCollapse && (
+          <div className="h-[64px] border-t border-[rgba(0,0,0,0.1)] flex items-center justify-center flex-shrink-0">
+            <button
+              onClick={onToggleCollapse}
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-[#71717A] hover:bg-[#F3F3F5] transition-colors"
+              title="Expand sidebar"
+            >
+              <PanelRightOpen className="w-5 h-5" />
+            </button>
           </div>
-          <span className="text-xl font-bold">Filo</span>
+        )}
+
+        {/* User Profile */}
+        <div className="h-[64px] border-t border-[rgba(0,0,0,0.1)] flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-medium">
+            {user.name
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-64 h-screen bg-white border-r border-[rgba(0,0,0,0.1)] flex flex-col">
+      {/* Logo */}
+      <div className="h-[64px] px-6 border-b border-[rgba(0,0,0,0.1)] flex items-center flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <img src="/logo_with_text.svg" alt="Filo" className="h-6" />
         </div>
       </div>
 
@@ -85,10 +146,23 @@ export function Sidebar({ user, requests }: SidebarProps) {
         </div>
       </nav>
 
+      {/* Toggle Button */}
+      {onToggleCollapse && (
+        <div className="h-[64px] px-4 border-t border-[rgba(0,0,0,0.1)] flex items-center flex-shrink-0">
+          <button
+            onClick={onToggleCollapse}
+            className="w-full flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            title="Collapse sidebar"
+          >
+            <PanelRightClose className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* User Profile */}
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer">
-          <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-medium">
+      <div className="h-[64px] px-4 border-t border-[rgba(0,0,0,0.1)] flex items-center flex-shrink-0">
+        <div className="flex items-center gap-3 w-full">
+          <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-medium flex-shrink-0">
             {user.name
               .split(' ')
               .map((n) => n[0])
@@ -99,7 +173,7 @@ export function Sidebar({ user, requests }: SidebarProps) {
             <p className="text-sm font-medium truncate">{user.name}</p>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
-          <User className="w-4 h-4 text-muted-foreground" />
+          <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         </div>
       </div>
     </div>

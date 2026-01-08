@@ -78,7 +78,7 @@ export function RichTextRenderer({ content, className }: RichTextRendererProps) 
 
       // Regular paragraph
       return (
-        <p key={`section-${sectionIndex}`} className="mb-3 text-sm leading-relaxed">
+        <p key={`section-${sectionIndex}`} className="mb-3 text-base font-normal leading-[1.5em]">
           {renderInlineFormatting(trimmed)}
         </p>
       )
@@ -86,7 +86,7 @@ export function RichTextRenderer({ content, className }: RichTextRendererProps) 
   }
 
   return (
-    <div className={cn('text-sm', className)}>
+    <div className={cn('text-base font-normal leading-[1.5em]', className)}>
       {renderContent()}
     </div>
   )
