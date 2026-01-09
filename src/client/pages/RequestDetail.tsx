@@ -1,19 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { Send, ChevronRight } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { ChatMessage } from '@/components/common/ChatMessage'
 import { DocumentSidebar } from '@/components/common/DocumentSidebar'
 import { Sidebar } from '@/components/common/Sidebar'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { storageUtils } from '@/utils/storage'
 import { getMockAIResponse, initializeMockChat } from '@/utils/mockAI'
 import { getDocumentRequirementsFromTask } from '@/utils/documentUtils'
 import { mockUser } from '@/data/mockData'
-import type { Request, ChatMessage as ChatMessageType, Task, DocumentRequirement } from '@/types'
+import type { Request, ChatMessage as ChatMessageType, Task, DocumentRequirement, Conversation, ChatMessageDB } from '@/types'
 
 export function RequestDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { user, userProfile } = useAuth()
+  const isChatRoute = location.pathname.startsWith('/client/chat/')
+  const initialMessage = (location.state as { initialMessage?: string })?.initialMessage
   const [request, setRequest] = useState<Request | null>(null)
   const [messages, setMessages] = useState<ChatMessageType[]>([])
   const [inputMessage, setInputMessage] = useState('')
@@ -22,18 +28,38 @@ export function RequestDetail() {
   const [sidebarManuallyClosed, setSidebarManuallyClosed] = useState(false)
   const [documents, setDocuments] = useState<DocumentRequirement[]>([])
   const [isNavCollapsed, setIsNavCollapsed] = useState(true)
-  const [requests, setRequests] = useState<Request[]>([])
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
+  const initialAICallMade = useRef<string | null>(null) // Track conversation ID for which initial AI call was made
 
   useEffect(() => {
-    // Load requests
-    const loadedRequests = storageUtils.getRequests()
-    const sortedRequests = loadedRequests.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    setRequests(sortedRequests)
-  }, [])
+    // Load conversations for sidebar
+    if (user?.id) {
+      loadConversations()
+    }
+  }, [user?.id])
+
+  const loadConversations = async () => {
+    if (!user?.id) return
+
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching conversations:', error)
+      } else {
+        setConversations(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error)
+    }
+  }
 
   useEffect(() => {
     if (!id) {
@@ -41,7 +67,11 @@ export function RequestDetail() {
       return
     }
 
-    // Load request
+    if (isChatRoute) {
+      // Load conversation from database
+      loadConversation()
+    } else {
+      // Load request from localStorage (legacy)
     const loadedRequest = storageUtils.getRequest(id)
     if (!loadedRequest) {
       navigate('/client/dashboard')
@@ -63,7 +93,74 @@ export function RequestDetail() {
     // Initialize documents
     const initialDocuments = getDocumentRequirementsFromTask(loadedRequest.title)
     setDocuments(initialDocuments)
-  }, [id, navigate])
+      setLoading(false)
+    }
+  }, [id, navigate, isChatRoute, user?.id])
+
+  const loadConversation = async () => {
+    if (!id || !user?.id) return
+
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single()
+
+      if (error) {
+        console.error('Error loading conversation:', error)
+        navigate('/client/dashboard')
+        return
+      }
+
+      if (data) {
+        // Convert DB messages format to ChatMessage format
+        const chatMessages: ChatMessageType[] = data.messages.map((msg: ChatMessageDB, index: number) => ({
+          id: `msg-${index}`,
+          role: msg.role === 'assistant' ? 'AI' : 'user',
+          message: msg.content,
+          timestamp: data.updated_at,
+        }))
+        setMessages(chatMessages)
+
+        // Get title from first user message or from initial message state
+        const firstUserMessage = data.messages.find((msg: ChatMessageDB) => msg.role === 'user')
+        const title = firstUserMessage?.content || initialMessage || 'New Conversation'
+        
+        // Create a mock request object for compatibility
+        setRequest({
+          id: data.id,
+          name: title,
+          title: title.length > 50 ? title.substring(0, 50) : title,
+          description: firstUserMessage?.content || initialMessage || '',
+          createdAt: data.created_at,
+        })
+
+        // Initialize documents
+        const initialDocuments = getDocumentRequirementsFromTask(title)
+        setDocuments(initialDocuments)
+
+        // Check if we need to get initial AI response
+        // Case 1: Empty conversation with initial message from navigation state
+        if (data.messages.length === 0 && initialMessage && initialAICallMade.current !== data.id) {
+          initialAICallMade.current = data.id // Mark that we've made the call for this conversation
+          getInitialAIResponse(data.id, initialMessage)
+        }
+        // Case 2: Conversation has only one user message (legacy or created elsewhere)
+        else if (data.messages.length === 1 && data.messages[0].role === 'user' && initialAICallMade.current !== data.id) {
+          initialAICallMade.current = data.id // Mark that we've made the call for this conversation
+          getInitialAIResponse(data.id, data.messages[0].content)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading conversation:', error)
+      navigate('/client/dashboard')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -96,6 +193,74 @@ export function RequestDetail() {
     })
   }
 
+  const sendMessageToBackend = async (conversationId: string, message: string): Promise<string | null> => {
+    try {
+      const response = await fetch('https://filo-99yo.onrender.com/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          message: message,
+        }),
+      })
+
+      if (!response.ok) {
+        console.error('Backend API error:', response.statusText)
+        return null
+      }
+
+      const data = await response.json()
+      
+      if (data.success && data.reply) {
+        return data.reply
+      } else {
+        console.error('Backend error:', data.error)
+        return null
+      }
+    } catch (error) {
+      console.error('Error calling backend API:', error)
+      return null
+    }
+  }
+
+  const getInitialAIResponse = async (conversationId: string, userMessage: string) => {
+    // Show user message immediately
+    const userMsg: ChatMessageType = {
+      id: `msg-${Date.now()}-user`,
+      role: 'user',
+      message: userMessage,
+      timestamp: new Date().toISOString(),
+    }
+    setMessages([userMsg])
+    setIsLoading(true)
+    
+    const aiReply = await sendMessageToBackend(conversationId, userMessage)
+    
+    if (aiReply) {
+      // Show AI response directly without reloading the whole page
+      const aiResponse: ChatMessageType = {
+        id: `msg-${Date.now()}-ai`,
+        role: 'AI',
+        message: aiReply,
+        timestamp: new Date().toISOString(),
+      }
+      setMessages([userMsg, aiResponse])
+    } else {
+      // Show error message
+      const errorResponse: ChatMessageType = {
+        id: `msg-${Date.now()}-ai`,
+        role: 'AI',
+        message: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date().toISOString(),
+      }
+      setMessages([userMsg, errorResponse])
+    }
+    
+    setIsLoading(false)
+  }
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !id || isLoading) return
 
@@ -106,25 +271,59 @@ export function RequestDetail() {
       timestamp: new Date().toISOString(),
     }
 
+    const messageText = inputMessage.trim()
+    
     // Add user message
-    setMessages((prev) => [...prev, userMessage])
-    storageUtils.saveChatMessage(id, userMessage)
+    const updatedMessages = [...messages, userMessage]
+    setMessages(updatedMessages)
     setInputMessage('')
     setIsLoading(true)
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const aiResponse: ChatMessageType = {
-        id: `msg-${Date.now()}-ai`,
-        role: 'AI',
-        message: getMockAIResponse(id),
-        timestamp: new Date().toISOString(),
-      }
+    if (isChatRoute) {
+      // Call backend API for chat routes
+      const aiReply = await sendMessageToBackend(id, messageText)
+      
+      if (aiReply) {
+        const aiResponse: ChatMessageType = {
+          id: `msg-${Date.now()}-ai`,
+          role: 'AI',
+          message: aiReply,
+          timestamp: new Date().toISOString(),
+        }
 
-      setMessages((prev) => [...prev, aiResponse])
-      storageUtils.saveChatMessage(id, aiResponse)
+        setMessages([...updatedMessages, aiResponse])
+      } else {
+        // Fallback error message
+        const errorResponse: ChatMessageType = {
+          id: `msg-${Date.now()}-ai`,
+          role: 'AI',
+          message: 'Sorry, I encountered an error processing your request. Please try again.',
+          timestamp: new Date().toISOString(),
+        }
+        setMessages([...updatedMessages, errorResponse])
+      }
+      
+      // Reload conversation from backend to get updated messages
+      await loadConversation()
       setIsLoading(false)
-    }, 1000)
+    } else {
+      // Legacy localStorage behavior for old request routes
+      storageUtils.saveChatMessage(id, userMessage)
+      
+      // Simulate AI response delay
+      setTimeout(() => {
+        const aiResponse: ChatMessageType = {
+          id: `msg-${Date.now()}-ai`,
+          role: 'AI',
+          message: getMockAIResponse(id),
+          timestamp: new Date().toISOString(),
+        }
+
+        setMessages([...updatedMessages, aiResponse])
+        storageUtils.saveChatMessage(id, aiResponse)
+        setIsLoading(false)
+      }, 1000)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -134,8 +333,12 @@ export function RequestDetail() {
     }
   }
 
-  if (!request) {
-    return <div>Loading...</div>
+  if (loading || !request) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    )
   }
 
   // Create a task for the checklist
@@ -162,8 +365,8 @@ export function RequestDetail() {
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <Sidebar
-        user={mockUser}
-        requests={requests}
+        user={userProfile || mockUser}
+        conversations={conversations}
         collapsed={isNavCollapsed}
         onToggleCollapse={() => setIsNavCollapsed(!isNavCollapsed)}
       />

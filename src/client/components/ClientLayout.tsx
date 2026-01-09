@@ -1,39 +1,72 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '@/components/common/Sidebar'
-import { mockUser } from '@/data/mockData'
-import { storageUtils } from '@/utils/storage'
-import type { Request } from '@/types'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
+import type { Conversation, User } from '@/types'
 
 export function ClientLayout() {
   const location = useLocation()
-  const [requests, setRequests] = useState<Request[]>([])
+  const { userProfile, user, loading } = useAuth()
+  const [conversations, setConversations] = useState<Conversation[]>([])
   const [isNavCollapsed, setIsNavCollapsed] = useState(false)
 
-  const loadRequests = () => {
-    // Load requests from localStorage
-    const loadedRequests = storageUtils.getRequests()
-    // Sort by creation date (newest first)
-    const sortedRequests = loadedRequests.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    setRequests(sortedRequests)
+  // Default user data if profile is not loaded yet
+  const defaultUser: User = {
+    name: user?.email?.split('@')[0] || 'User',
+    email: user?.email || '',
+    companyName: 'N/A',
+    gstin: 'N/A',
+  }
+
+  const loadConversations = async () => {
+    if (!user?.id) return
+
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching conversations:', error)
+      } else {
+        setConversations(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error)
+    }
   }
 
   useEffect(() => {
-    loadRequests()
-  }, [])
+    if (user?.id) {
+      loadConversations()
+    }
+  }, [user?.id])
 
-  // Refresh requests when location changes (e.g., after creating a new request)
+  // Refresh conversations when location changes (e.g., after creating a new conversation)
   useEffect(() => {
-    loadRequests()
-  }, [location.pathname])
+    if (user?.id) {
+      loadConversations()
+    }
+  }, [location.pathname, user?.id])
+
+  // Only show loading if auth is still loading (not profile)
+  // Profile can load in the background
+  if (loading && !user) {
+    return (
+      <div className="flex h-screen overflow-hidden items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
-        user={mockUser}
-        requests={requests}
+        user={userProfile || defaultUser}
+        conversations={conversations}
         collapsed={isNavCollapsed}
         onToggleCollapse={() => setIsNavCollapsed(!isNavCollapsed)}
       />

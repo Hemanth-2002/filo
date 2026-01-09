@@ -30,13 +30,29 @@ export interface User {
   gstin: string
 }
 
-export type ChatRole = 'user' | 'AI'
+export type ChatRole = 'user' | 'assistant'
+export type ChatRoleUI = 'user' | 'AI'
 
+// DB format for messages in conversations table
+export interface ChatMessageDB {
+  role: ChatRole
+  content: string
+}
+
+// UI format for displaying messages
 export interface ChatMessage {
   id: string
-  role: ChatRole
+  role: ChatRoleUI
   message: string
   timestamp: string
+}
+
+export interface Conversation {
+  id: string
+  user_id: string
+  messages: ChatMessageDB[]
+  created_at: string
+  updated_at: string
 }
 
 export interface DocumentRequirement {

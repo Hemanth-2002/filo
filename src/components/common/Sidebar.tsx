@@ -1,19 +1,38 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { ChevronRight, ChevronDown, FileText, FileStack, User, PanelRightOpen, PanelRightClose } from 'lucide-react'
-import type { User as UserType, Request } from '@/types'
+import { ChevronRight, ChevronDown, FileText, FileStack, PanelRightOpen, PanelRightClose, LogOut } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import type { User as UserType, Conversation } from '@/types'
 
 interface SidebarProps {
   user: UserType
-  requests: Request[]
+  conversations: Conversation[]
   collapsed?: boolean
   onToggleCollapse?: () => void
 }
 
-export function Sidebar({ user, requests, collapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ user, conversations, collapsed = false, onToggleCollapse }: SidebarProps) {
   const location = useLocation()
-  const [isRequestsOpen, setIsRequestsOpen] = useState(true)
+  const navigate = useNavigate()
+  const { signOut, user: authUser } = useAuth()
+  const [isConversationsOpen, setIsConversationsOpen] = useState(true)
+
+  // Get conversation title from first user message
+  const getConversationTitle = (conversation: Conversation): string => {
+    const firstUserMessage = conversation.messages.find((msg) => msg.role === 'user')
+    if (firstUserMessage) {
+      const preview = firstUserMessage.content
+      return preview.length > 30 ? `${preview.substring(0, 30)}...` : preview
+    }
+    return 'New conversation'
+  }
+
+
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/login')
+  }
 
   if (collapsed) {
     return (
@@ -33,18 +52,18 @@ export function Sidebar({ user, requests, collapsed = false, onToggleCollapse }:
                 ? 'bg-[#EFF6FF] text-[#2563EB]'
                 : 'text-[#71717A] hover:bg-[#F3F3F5]'
             )}
-            title="Create New Request"
+          title="New Request"
           >
             <FileText className="w-5 h-5" />
           </Link>
 
           <button
-            onClick={() => setIsRequestsOpen(!isRequestsOpen)}
+            onClick={() => setIsConversationsOpen(!isConversationsOpen)}
             className={cn(
               'w-10 h-10 rounded-lg flex items-center justify-center transition-colors',
               'text-[#71717A] hover:bg-[#F3F3F5]'
             )}
-            title="My Requests"
+            title="My Chats"
           >
             <FileStack className="w-5 h-5" />
           </button>
@@ -65,13 +84,13 @@ export function Sidebar({ user, requests, collapsed = false, onToggleCollapse }:
 
         {/* User Profile */}
         <div className="h-[64px] border-t border-[rgba(0,0,0,0.1)] flex items-center justify-center flex-shrink-0">
-          <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-medium">
-            {user.name
-              .split(' ')
-              .map((n) => n[0])
-              .join('')
-              .toUpperCase()}
-          </div>
+          <button
+            onClick={handleLogout}
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-[#71717A] hover:bg-[#F3F3F5] transition-colors"
+            title="Logout"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
       </div>
     )
@@ -106,38 +125,38 @@ export function Sidebar({ user, requests, collapsed = false, onToggleCollapse }:
 
         <div>
           <button
-            onClick={() => setIsRequestsOpen(!isRequestsOpen)}
+            onClick={() => setIsConversationsOpen(!isConversationsOpen)}
             className="w-full flex items-center justify-between p-3 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <div className="flex items-center gap-3">
               <FileStack className="w-5 h-5" />
-              <span>My Requests</span>
+              <span>My Chats</span>
             </div>
-            {isRequestsOpen ? (
+            {isConversationsOpen ? (
               <ChevronDown className="w-4 h-4" />
             ) : (
               <ChevronRight className="w-4 h-4" />
             )}
           </button>
 
-          {isRequestsOpen && (
+          {isConversationsOpen && (
             <div className="ml-8 mt-2 space-y-1">
-              {requests.length === 0 ? (
-                <p className="text-xs text-muted-foreground p-2">No requests yet</p>
+              {conversations.length === 0 ? (
+                <p className="text-xs text-muted-foreground p-2">No conversations yet</p>
               ) : (
-                requests.map((request) => (
+                conversations.map((conversation) => (
                   <Link
-                    key={request.id}
-                    to={`/client/request/${request.id}`}
+                    key={conversation.id}
+                    to={`/client/chat/${conversation.id}`}
                     className={cn(
                       'block p-2 rounded-lg text-sm transition-colors truncate',
-                      location.pathname === `/client/request/${request.id}`
+                      location.pathname === `/client/chat/${conversation.id}`
                         ? 'bg-primary/10 text-primary font-medium'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                     )}
-                    title={request.title}
+                    title={getConversationTitle(conversation)}
                   >
-                    {request.title}
+                    {getConversationTitle(conversation)}
                   </Link>
                 ))
               )}
@@ -160,8 +179,8 @@ export function Sidebar({ user, requests, collapsed = false, onToggleCollapse }:
       )}
 
       {/* User Profile */}
-      <div className="h-[64px] px-4 border-t border-[rgba(0,0,0,0.1)] flex items-center flex-shrink-0">
-        <div className="flex items-center gap-3 w-full">
+      <div className="px-4 py-3 border-t border-[rgba(0,0,0,0.1)] flex-shrink-0">
+        <div className="flex items-center gap-3 w-full mb-2">
           <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-medium flex-shrink-0">
             {user.name
               .split(' ')
@@ -173,8 +192,14 @@ export function Sidebar({ user, requests, collapsed = false, onToggleCollapse }:
             <p className="text-sm font-medium truncate">{user.name}</p>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
-          <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
       </div>
     </div>
   )

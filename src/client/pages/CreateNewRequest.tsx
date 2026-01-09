@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Home, ChevronRight } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { FrequentlyUsedRequest } from '@/components/common/FrequentlyUsedRequest'
-import { storageUtils } from '@/utils/storage'
-import type { Request } from '@/types'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
+import type { Conversation } from '@/types'
 
 const defaultFrequentlyUsedRequests = [
   'File GST Return',
@@ -14,6 +15,7 @@ const defaultFrequentlyUsedRequests = [
 
 export function CreateNewRequest() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [requestDescription, setRequestDescription] = useState('')
   const [frequentlyUsedRequests, setFrequentlyUsedRequests] = useState(
     defaultFrequentlyUsedRequests
@@ -29,29 +31,37 @@ export function CreateNewRequest() {
     setRequestDescription(request)
   }
 
-  const handleSubmit = () => {
-    if (!requestDescription.trim()) return
+  const handleSubmit = async () => {
+    if (!requestDescription.trim() || !user?.id) return
 
-    // Generate request ID
-    const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    
-    // Extract title from description (first line or first 50 chars)
-    const title = requestDescription.split('\n')[0].substring(0, 50) || 'New Request'
+    try {
+      // Generate conversation ID
+      const conversationId = crypto.randomUUID()
+      
+      // Create empty conversation (backend will add the initial message)
+      const newConversation: Conversation = {
+        id: conversationId,
+        user_id: user.id,
+        messages: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
 
-    // Create request object
-    const newRequest: Request = {
-      id: requestId,
-      name: `Request ${new Date().getTime()}`,
-      title: title,
-      description: requestDescription.trim(),
-      createdAt: new Date().toISOString(),
+      // Save to database
+      const { error } = await supabase.from('conversations').insert(newConversation)
+
+      if (error) {
+        console.error('Error creating conversation:', error)
+        return
+      }
+
+      // Navigate to chat page with the initial message in state
+      navigate(`/client/chat/${conversationId}`, { 
+        state: { initialMessage: requestDescription.trim() }
+      })
+    } catch (error) {
+      console.error('Error creating conversation:', error)
     }
-
-    // Save to localStorage
-    storageUtils.saveRequest(newRequest)
-
-    // Navigate to request detail page
-    navigate(`/client/request/${requestId}`)
   }
 
   return (

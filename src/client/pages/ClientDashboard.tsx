@@ -1,11 +1,46 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Home, MessageSquarePlus, FileText } from 'lucide-react'
 import { QuickActionCard } from '@/components/common/QuickActionCard'
-import { TaskCard } from '@/components/common/TaskCard'
-import { mockUser, mockTasks } from '@/data/mockData'
+import { ConversationCard } from '@/components/common/ConversationCard'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
+import type { Conversation } from '@/types'
 
 export function ClientDashboard() {
   const navigate = useNavigate()
+  const { user, userProfile } = useAuth()
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchConversations()
+    }
+  }, [user?.id])
+
+  const fetchConversations = async () => {
+    if (!user?.id) return
+
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching conversations:', error)
+      } else {
+        setConversations(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleNewRequest = () => {
     navigate('/client/new-request')
@@ -15,9 +50,8 @@ export function ClientDashboard() {
     navigate('/client/documents')
   }
 
-  const handleTaskClick = (taskId: string) => {
-    // TODO: Navigate to task detail page
-    console.log('View task:', taskId)
+  const handleConversationClick = (conversationId: string) => {
+    navigate(`/client/chat/${conversationId}`)
   }
 
   return (
@@ -35,9 +69,11 @@ export function ClientDashboard() {
         {/* Welcome Section */}
         <div className="flex flex-col gap-1.5 w-full">
           <h1 className="text-lg font-bold text-[#0F172A] leading-[1.56em]">
-            Welcome, {mockUser.companyName}
+            Welcome, {userProfile?.companyName || userProfile?.name || 'User'}
           </h1>
-          <p className="text-sm font-normal text-[#64748B]">GSTIN: {mockUser.gstin}</p>
+          {userProfile?.gstin && userProfile.gstin !== 'N/A' && (
+            <p className="text-sm font-normal text-[#64748B]">GSTIN: {userProfile.gstin}</p>
+          )}
         </div>
 
         {/* Quick Actions */}
@@ -61,18 +97,26 @@ export function ClientDashboard() {
           </div>
         </div>
 
-        {/* Your Tasks */}
+        {/* Your Chats */}
         <div className="flex flex-col gap-4 w-full">
-          <h2 className="text-base font-semibold text-[rgba(0,0,0,0.65)]">Your Tasks</h2>
-          <div className="flex flex-col gap-6 w-full">
-            {mockTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => handleTaskClick(task.id)}
-              />
-            ))}
-          </div>
+          <h2 className="text-base font-semibold text-[rgba(0,0,0,0.65)]">Your Chats</h2>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading conversations...</div>
+          ) : conversations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No conversations yet. Start a new chat to get started!
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6 w-full">
+              {conversations.map((conversation) => (
+                <ConversationCard
+                  key={conversation.id}
+                  conversation={conversation}
+                  onClick={() => handleConversationClick(conversation.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
