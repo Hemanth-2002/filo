@@ -38,30 +38,23 @@ export function ChatMessage({ message, checklistTask, onChecklistClick, user }: 
         </div>
       )}
       <div className={cn('flex flex-col gap-1', isUser ? 'items-end max-w-[70%]' : 'items-start max-w-[70%]')}>
-        <div
-          className={cn(
-            'rounded-xl px-4 py-3',
-            isUser
-              ? 'bg-[#1677FF] text-white'
-              : 'bg-[#ECECF0] text-[#0A0A0A]'
-          )}
-        >
-          {isUser ? (
+        {isUser ? (
+          <div className="rounded-xl px-4 py-3 bg-[#1677FF] text-white">
             <p className="text-base font-normal leading-[1.5em] whitespace-pre-wrap text-right">{message.message}</p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <div className="text-base font-normal leading-[1.5em]">
-                <RichTextRenderer content={message.message} />
-              </div>
-              {hasChecklist && checklistTask && (
-                <div className="mt-4">
-                  <ChecklistCard task={checklistTask} onClick={onChecklistClick} />
-                </div>
-              )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="text-base font-normal leading-[1.5em] text-[#0A0A0A]">
+              <RichTextRenderer content={message.message} />
             </div>
-          )}
-        </div>
-        <p className="text-xs font-normal text-[#717182] px-1">
+            {hasChecklist && checklistTask && (
+              <div className="mt-4">
+                <ChecklistCard task={checklistTask} onClick={onChecklistClick} />
+              </div>
+            )}
+          </div>
+        )}
+        <p className="text-xs font-normal text-[#717182]">
           {format(timestamp, 'HH:mm')}
         </p>
       </div>
